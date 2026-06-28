@@ -28,7 +28,6 @@ def send_email(body):
         s.login(GMAIL_USER, GMAIL_PASS)
         s.send_message(msg)
 
-# 前回ハッシュをファイルから読み込み
 last_hash = ""
 if os.path.exists(HASH_FILE):
     with open(HASH_FILE, "r") as f:
@@ -59,7 +58,6 @@ elif not last_hash:
 else:
     print("変化なし。")
 
-# ハッシュをファイルに保存
 with open(HASH_FILE, "w") as f:
     f.write(new_hash)
 print("✅ ハッシュ保存完了")
