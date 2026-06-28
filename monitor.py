@@ -1,15 +1,12 @@
 import hashlib, os, smtplib, requests, re
 from email.mime.text import MIMEText
 from bs4 import BeautifulSoup
-import subprocess
 
 URL = "https://select-type.com/rsv/?id=jA_3bzej9I8&c_id=404251"
 NOTIFY_EMAIL = "shinoyan1@gmail.com"
 GMAIL_USER = os.environ["GMAIL_USER"]
 GMAIL_PASS = os.environ["GMAIL_PASS"]
-LAST_HASH = os.environ.get("LAST_HASH", "")
-GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN", "")
-REPO = os.environ.get("GITHUB_REPOSITORY", "")
+HASH_FILE = "last_hash.txt"
 
 def get_page_text():
     headers = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"}
@@ -31,17 +28,16 @@ def send_email(body):
         s.login(GMAIL_USER, GMAIL_PASS)
         s.send_message(msg)
 
-def update_secret(new_hash):
-    subprocess.run(
-        ["gh", "secret", "set", "LAST_HASH", "--body", new_hash, "--repo", REPO],
-        check=True,
-        env={**os.environ, "GH_TOKEN": GITHUB_TOKEN}
-    )
+# 前回ハッシュをファイルから読み込み
+last_hash = ""
+if os.path.exists(HASH_FILE):
+    with open(HASH_FILE, "r") as f:
+        last_hash = f.read().strip()
 
 text = get_page_text()
 new_hash = hashlib.sha256(text.encode()).hexdigest()
 
-print(f"前回ハッシュ: {LAST_HASH[:16] or '(初回)'}...")
+print(f"前回ハッシュ: {last_hash[:16] or '(初回)'}...")
 print(f"今回ハッシュ: {new_hash[:16]}...")
 
 if "準備中" in text:
@@ -49,7 +45,7 @@ if "準備中" in text:
 else:
     print("🎉 予約開始の可能性！")
 
-if LAST_HASH and LAST_HASH != new_hash:
+if last_hash and last_hash != new_hash:
     body = f"""巨大とうもろこし迷路の予約ページに変化がありました！
 
 URL: {URL}
@@ -58,11 +54,12 @@ URL: {URL}
 """
     send_email(body)
     print("✅ メール送信完了")
-elif not LAST_HASH:
+elif not last_hash:
     print("📝 初回実行：ハッシュを保存します")
-
-if new_hash != LAST_HASH:
-    update_secret(new_hash)
-    print("✅ ハッシュ更新完了")
 else:
     print("変化なし。")
+
+# ハッシュをファイルに保存
+with open(HASH_FILE, "w") as f:
+    f.write(new_hash)
+print("✅ ハッシュ保存完了")
